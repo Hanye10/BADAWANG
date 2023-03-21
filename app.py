@@ -8,11 +8,13 @@ app = Flask(__name__, template_folder="templates")
 
 app.config["MONGO_URI"] = "mongodb://localhost:27017/local"
 mongo = PyMongo(app)
+signup = mongo.db.signup
 SECRET_KEY= 'BADABOGO'
 
 @app.route('/')
-def home():
-    return render_template('login.html')
+def login():
+    msg = request.args.get("msg")
+    return render_template('login.html', msg=msg)
 
 @app.route('/register')
 def register():
@@ -51,28 +53,26 @@ def api_register():
         flash("휴대전화 번호를 입력하세요.")
         return render_template("register.html")
 
-    result = mongo.db['signup'].find_one({'id':id})
+    result = signup.find_one({'id':id})
     if result is not None:
         return jsonify({'result':'fail', 'msg':'이미 등록된 ID입니댜.'})
     else:
-        mongo.db['signup'].insert_one({'id':id, 'pw':pw_hash, 'name':name, 'birth':birth, 'gender':gender, 'email':email, 'mobile':mobile})
+        signup.insert_one({'id':id, 'pw':pw_hash, 'name':name, 'birth':birth, 'gender':gender, 'email':email, 'mobile':mobile})
         return jsonify({'result':'sucess'})
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
-    userid = request.form['userid']
-    username = request.form['username']
-    password = request.form['password']
-    re_password = request.form['re_password']
+    id = request.form.get('id')
+    password = request.form.get('password')
 
     pw_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
 
-    result = mongo.db['signup'].find_one({'id':userid, 'pw':pw_hash})
+    result = signup.find_one({'id':id, 'pw':pw_hash})
 
     if result is not None:
         payload = {
-            'id':userid,
-            'exp':datetime.datetime.utcnow() + datetime.timedelta(seconds=90)
+            'id':id,
+            'exp':datetime.datetime.utcnow() + datetime.timedelta(seconds=60 * 60 * 12)
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
